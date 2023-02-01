@@ -1046,8 +1046,8 @@ class SubhaloAlignment(object):
     def _set_subhalo_values(self, **kwargs):
         r"""
         Earlier, the host halo values were input as a default for every halo within.
-        Now, the satellite galaxies will have their subhalo information overwritten so all alignment will be with respect
-        to the suhalo, not the host halo
+        Now, columns will be added to hold the subhalo information.
+        For host halos, their original information will be kept.
         
         Parameters
         ==========
@@ -1065,6 +1065,16 @@ class SubhaloAlignment(object):
         # Since this is the column used to match, there is no need to overwrite anyway
         cols.remove('halo_id')
         cols.remove('halo_hostid')              # Keep the overwritten host halo id
+
+        # Add columns to the table to hold "subhalo_" values
+        # Start with host halo values. We will overwrite the subhalos later
+        for label in cols:
+            table[ "subhalo_"+label ] = table[ label ]
+
+        # Add "subhalo_" prefix to every label to reference the new columns added
+        # and "subhalo_" values will refer to the subhalos
+        # With the exception of "halo_id" which refers to the (sub)halo appropriately
+        cols = [ "subhalo_"+label for label in cols ]
         
         # find where each halo_id appears in the full halocat
         halo_ids = table['halo_id']
