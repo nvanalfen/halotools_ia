@@ -1005,6 +1005,10 @@ class SubhaloAlignment(object):
         Unlike SatelliteAlignment, this alignment model needs a table to exist prior to being called. This is
         because the 
         """
+
+        # Prefix to add to the beginning of all subhalo values to distinguish them from their host halo values
+        # The host halo values start with "halo_", so prepending this will make it "subhalo_"
+        self.subhalo_prefix = "sub"
         
         if halocat is None:
             msg = "halocat must be passed as an argument to preserve subhalo information"
@@ -1055,7 +1059,7 @@ class SubhaloAlignment(object):
         
         Returns
         =======
-        None, table should be altered in place and will not need to return
+        table : the altered galaxy table
         """
         table = kwargs['table']
         
@@ -1069,12 +1073,7 @@ class SubhaloAlignment(object):
         # Add columns to the table to hold "subhalo_" values
         # Start with host halo values. We will overwrite the subhalos later
         for label in cols:
-            table[ "subhalo_"+label ] = table[ label ]
-
-        # Add "subhalo_" prefix to every label to reference the new columns added
-        # and "subhalo_" values will refer to the subhalos
-        # With the exception of "halo_id" which refers to the (sub)halo appropriately
-        cols = [ "subhalo_"+label for label in cols ]
+            table[ self.subhalo_prefix+label ] = table[ label ]
         
         # find where each halo_id appears in the full halocat
         halo_ids = table['halo_id']
@@ -1082,11 +1081,15 @@ class SubhaloAlignment(object):
         
         # This overwrites the information from their host halo that was used for them instead (unless that halo is the host halo)
         for col in cols:
-            table[col][ inds1 ] = self._halocat.halo_table[col][ inds2 ]
+            # Add "subhalo_" prefix to every label to reference the new columns added
+            # and "subhalo_" values will refer to the subhalos
+            table[self.subhalo_prefix+col][ inds1 ] = self._halocat.halo_table[col][ inds2 ]
                 
         # If the halo is not a real subhalo, overwrite the orientation so it is the same relative to its new host halo as its original
         if self._rotate_relative:
             self._orient_false_subhalo( table=table )
+        
+        return table
        
     def _orient_false_subhalo(self, table):
         r"""
@@ -1206,18 +1209,19 @@ class SubhaloAlignment(object):
             arrays of galaxies' axes
         """
         
-        # Before anything else, overwrite the default host halo values with the subhalo values for each satellite galaxy
-        self._set_subhalo_values(table=kwargs['table'])
-        
         if 'table' in kwargs.keys():
             table = kwargs['table']
-            Ax = table[self.list_of_haloprops_needed[0]]
-            Ay = table[self.list_of_haloprops_needed[1]]
-            Az = table[self.list_of_haloprops_needed[2]]
+            # Before anything else, overwrite the default host halo values with the subhalo values for each satellite galaxy
+            table = self._set_subhalo_values(table=kwargs['table'])
+            print("subhalo_axisA_x" in table.columns)
+
+            Ax = table[self.subhalo_prefix+self.list_of_haloprops_needed[0]]
+            Ay = table[self.subhalo_prefix+self.list_of_haloprops_needed[1]]
+            Az = table[self.subhalo_prefix+self.list_of_haloprops_needed[2]]
         else:
-            Ax = kwargs['halo_axisA_x']
-            Ay = kwargs['halo_axisA_y']
-            Az = kwargs['halo_axisA_z']
+            Ax = kwargs[self.subhalo_prefix+'halo_axisA_x']
+            Ay = kwargs[self.subhalo_prefix+'halo_axisA_y']
+            Az = kwargs[self.subhalo_prefix+'halo_axisA_z']
 
         # get alignment strength for each galaxy
         if 'table' in kwargs.keys():
